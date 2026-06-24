@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/chart.js"></script>
+<style>
+body { font-family: Arial; text-align: center; margin-top: 40px; }
+.slider { width: 250px; }
+.card { width: 90%; max-width: 600px; margin: auto; }
+</style>
+</head>
+
+<body>
+<img src="/logo.gif" width="150">
+<h2>ESP32 PWM Control</h2>
+
+PWM 1: <input type="range" min="0" max="255" id="s0" oninput="setPWM(0,this.value)">
+<span id="v0">0</span><br><br>
+
+PWM 2: <input type="range" min="0" max="255" id="s1" oninput="setPWM(1,this.value)">
+<span id="v1">0</span><br><br>
+
+PWM 3: <input type="range" min="0" max="255" id="s2" oninput="setPWM(2,this.value)">
+<span id="v2">0</span><br><br>
+
+PWM 4: <input type="range" min="0" max="255" id="s3" oninput="setPWM(3,this.value)">
+<span id="v3">0</span><br><br>
+
+<h2>Wow a chart </h2>
+<div class="card">
+  <canvas id="adcChart"></canvas>
+</div>
+
+<h2>GPIO + ADC</h2>
+
+<div class="panel">
+
+  <!-- GPIO BUTTONS -->
+  <h3>GPIO Control</h3>
+
+  <button onclick="setGPIO(16,1)">GPIO 16 ON</button>
+  <button onclick="setGPIO(16,0)">OFF</button><br>
+
+  <button onclick="setGPIO(17,1)">GPIO 17 ON</button>
+  <button onclick="setGPIO(17,0)">OFF</button>
+
+  <!-- LEDS -->
+  <h3>LED Output (GPIO 2 example)</h3>
+
+  <button onclick="setGPIO(2,1)">LED ON</button>
+  <button onclick="setGPIO(2,0)">LED OFF</button>
+
+  <!-- ADC -->
+  <h3>ADC Level</h3>
+  <div class="bar">
+    <div id="fill" class="fill"></div>
+  </div>
+
+  <p id="adcText">0</p>
+
+</div>
+
+<script>
+async function setPWM(ch, val) {
+  document.getElementById("v"+ch).innerText = val;
+  fetch(`/api/pwm?ch=${ch}&val=${val}`);
+}
+
+let labels = [];
+let data = [];
+
+const ctx = document.getElementById('adcChart');
+
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [{
+      label: 'ADC Value (simulated)',
+      data: data,
+      borderWidth: 2,
+      tension: 0.3
+    }]
+  },
+  options: {
+    animation: false,
+    scales: {
+      y: {
+        min: 0,
+        max: 4095
+      }
+    }
+  }
+});
+
+function addPoint(value) {
+  const time = new Date().toLocaleTimeString();
+
+  labels.push(time);
+  data.push(value);
+
+  // keep last 20 points
+  if (data.length > 20) {
+    labels.shift();
+    data.shift();
+  }
+
+  chart.update();
+}
+
+function setGPIO(pin, state) {
+  fetch(`/api/gpio?pin=${pin}&state=${state}`);
+}
+
+
+async function updateADC() {
+  let res = await fetch('/api/adc');
+  let data = await res.json();
+
+  let percent = (data.value / 4095) * 100;
+
+  document.getElementById("fill").style.width = percent + "%";
+  document.getElementById("adcText").innerText = data.value;
+}
+
+setInterval(updateADC, 1000);
+</script>
+
+</body>
+</html>
