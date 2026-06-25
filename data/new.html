@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabs Example</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: rgb(227, 223, 214);
+            padding: 40px;
+        }
+
+        .dashboard {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .tile {
+            width: 180px;
+            background: rgb(237, 233, 224);
+
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+        }
+
+        .title {
+            font-size: 50px;
+            opacity: 0.7;
+            margin-bottom: 10px;
+        }
+
+        .value {
+            font-size: 100px;
+            font-family: monospace;
+        }
+
+        .unit {
+            font-size: 50px;
+            opacity: 0.7;
+            margin-left: 4px;
+        }
+
+
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .tab-button {
+            padding: 12px 20px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .tab-button.active {
+            border-bottom: 3px solid #007bff;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px 0;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .controls {
+            background: rgb(237, 233, 224);
+            width: 430px;
+            display: inline-block;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+        }
+
+        select {
+            padding: 8px;
+            border-radius: 6px;
+            border: none;
+            background: rgb(237, 233, 224);
+
+            color: black;
+            font-size: 14px;
+        }
+
+
+        .pivot {
+            width: 10px;
+            height: 10px;
+            background: #38bdf8;
+            border-radius: 50%;
+            position: absolute;
+            z-index: 2;
+        }
+
+        .arm {
+            width: 120px;
+            height: 6px;
+            background: #a78bfa;
+            position: absolute;
+            transform-origin: left center;
+            border-radius: 4px;
+        }
+
+        .readout {
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+
+
+        .wrapper>div {
+            background: rgb(237, 233, 224);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+        }
+
+        .wrapper {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            grid-auto-rows: minmax(100px, auto);
+        }
+
+        .selection {
+            grid-column: 1 / 3;
+            grid-row: 1;
+        }
+
+        .roll {
+            grid-column: 2;
+            grid-row: 2 / 5;
+            border-left: 4px solid orange;
+
+        }
+
+        .pitch {
+            grid-column: 1;
+            grid-row: 2 / 5;
+            border-left: 4px solid #38bdf8;
+
+        }
+
+        .length {
+            grid-column: 3;
+            grid-row: 1 / 5;
+            border-left: 4px solid #f838f2;
+
+
+        }
+
+        .visualization {
+            grid-column: 4;
+            grid-row: 1 / 5;
+
+            background: rgb(237, 233, 224);
+
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+
+
+
+
+.light-tile {
+  width: auto;
+}
+
+.btn {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+.btn.on {
+  background: #22c55e;
+  color: black;
+}
+
+.btn.off {
+  background: #ef4444;
+  color: white;
+}
+
+.slider-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lighty{
+    display: grid;
+          grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+          grid-template-rows: repeat(2, 1fr);
+
+}
+
+input[type="range"] {
+  width: 100%;
+}
+
+    </style>
+</head>
+
+<body>
+
+    <div class="tabs">
+        <button class="tab-button active" data-tab="orientation">Orientation</button>
+        <button class="tab-button" data-tab="lighting">Lighting</button>
+        <button class="tab-button" data-tab="settings">Settings</button>
+    </div>
+
+    <!-- ORIENTATION TAB -->
+    <div id="orientation" class="tab-content active">
+
+        <div class="wrapper">
+            <div class="selection">
+
+
+                <select class="title" id="sensorSelect">
+                    <option value="sensor1">Sensor 1</option>
+                    <option value="sensor2">Sensor 2</option>
+                    <option value="sensor3">Sensor 3</option>
+                </select>
+            </div>
+            <div class="pitch">
+                <div class="title">Pitch</div>
+                <div class="value" id="pitchValue">+5.24<span class="unit">°</span></div>
+            </div>
+            <div class="roll">
+                <div class="title">Roll</div>
+                <div class="value" id="rollValue">-12.81<span class="unit">°</span></div>
+            </div>
+            <div class="length">
+                <div class="title">Length</div>
+                <div class="value" id="lengthValue">202<span class="unit">M</span></div>
+            </div>
+            <div class="visualization">
+                <div class="pivot"></div>
+                <div class="arm" id="arm"></div>
+                <div class="readout" id="pitchText">Pitch: 0.00°</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="lighting" class="tab-content">
+<div class="lighty">
+        <div class="tile light-tile">
+            <div class="title">Light one</div>
+
+            <button id="enableBtn" class="btn off">Disabled</button>
+
+            <div class="slider-block">
+                <input id="pwmSlider" type="range" min="0" max="100" value="0">
+                <div class="value" id="pwmText">Brightness: 0%</div>
+            </div>
+        </div>
+
+          <div class="tile light-tile">
+            <div class="title">Light two</div>
+
+            <button id="enableBtn" class="btn off">Disabled</button>
+
+            <div class="slider-block">
+                <input id="pwmSlider" type="range" min="0" max="100" value="0">
+                <div class="value" id="pwmText">Brightness: 0%</div>
+            </div>
+        </div>
+
+        
+        <div class="tile light-tile">
+            <div class="title">Light three</div>
+
+            <button id="enableBtn" class="btn off">Disabled</button>
+
+            <div class="slider-block">
+                <input id="pwmSlider" type="range" min="0" max="100" value="0">
+                <div class="value" id="pwmText">Brightness: 0%</div>
+            </div>
+        </div>
+
+          <div class="tile light-tile">
+            <div class="title">Light four</div>
+
+            <button id="enableBtn" class="btn off">Disabled</button>
+
+            <div class="slider-block">
+                <input id="pwmSlider" type="range" min="0" max="100" value="0">
+                <div class="value" id="pwmText">Brightness: 0%</div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <div id="settings" class="tab-content">
+        <h1>Settings</h1>
+        <p>Application settings go here.</p>
+    </div>
+
+    <script>
+        // Tabs
+        const buttons = document.querySelectorAll('.tab-button');
+        const contents = document.querySelectorAll('.tab-content');
+
+        buttons.forEach(button => {
+            button.addEventListener('click', () => {
+                const target = button.dataset.tab;
+
+                buttons.forEach(btn => btn.classList.remove('active'));
+                contents.forEach(content => content.classList.remove('active'));
+
+                button.classList.add('active');
+                document.getElementById(target).classList.add('active');
+            });
+        });
+
+        // Sensor data (replace with real sensor input later)
+        const sensorData = {
+            sensor1: { pitch: 5.24, roll: -12.81 },
+            sensor2: { pitch: -10.2, roll: 3.4 },
+            sensor3: { pitch: 18.6, roll: -7.1 }
+        };
+
+        const sensorSelect = document.getElementById("sensorSelect");
+        const pitchEl = document.getElementById("pitchValue");
+        const rollEl = document.getElementById("rollValue");
+        const arm = document.getElementById("arm");
+        const pitchText = document.getElementById("pitchText");
+
+        function update(sensorKey) {
+            const data = sensorData[sensorKey];
+
+            // numeric tiles
+            pitchEl.innerHTML = `${data.pitch >= 0 ? "+" : ""}${data.pitch.toFixed(0)}<span class="unit">°</span>`;
+            rollEl.innerHTML = `${data.roll >= 0 ? "+" : ""}${data.roll.toFixed(0)}<span class="unit">°</span>`;
+
+            // arm visualization (pitch)
+            const pitch = Math.max(-90, Math.min(90, data.pitch));
+            arm.style.transform = `rotate(${pitch}deg)`;
+
+            pitchText.textContent = `Pitch: ${pitch.toFixed(2)}°`;
+        }
+
+        sensorSelect.addEventListener("change", (e) => {
+            update(e.target.value);
+        });
+
+        // initial load
+        update(sensorSelect.value);
+
+        // demo motion (remove when using real sensor)
+        setInterval(() => {
+            const t = Date.now() / 1000;
+            sensorData.sensor1.pitch = 20 * Math.sin(t);
+            update(sensorSelect.value);
+        }, 50);
+    </script>
+
+</body>
+
+</html>
