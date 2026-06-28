@@ -1,155 +1,110 @@
 #include <Arduino.h>
-#include <LittleFS.h>
 #include <SPI.h>
-#include <Ethernet.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <Wire.h>
 
-// ===== SERVER =====
-EthernetServer server(80);
+Adafruit_MPU6050 mpu;
+#include <math.h>
 
-// ===== STATE =====
-int pwmVal[4] = {0, 0, 0, 0};
+struct Vec3
+{
+    float x, y, z;
 
-// ===== PINS (adjust for Opta!) =====
-const int pwmPins[4] = {3, 5, 6, 9}; // NOTE: change to real Opta PWM-capable pins
+    // Length
+    float magnitude() const
+    {
+        return sqrt(x * x + y * y + z * z);
+    }
 
-// ===== SETUP =====
-void setup() {
+    // Unit vector
+    Vec3 normalized() const
+    {
+        float mag = magnitude();
+        if (mag < 0.00001)
+            return {0.0f, 0.0f, 0.0f};
+
+        return *this / mag;
+    }
+    float operator*(const Vec3& other) const
+    {
+        return x * other.x + y * other.y + z * other.z;
+    }
+
+    Vec3 operator*(float s) const
+    {
+        return {x * s, y * s, z * s};
+    }
+
+    Vec3 operator+(const Vec3& other) const
+    {
+        return {x + other.x, y + other.y, z + other.z};
+    }
+
+    Vec3 operator-(const Vec3& other) const
+    {
+        return {x - other.x, y - other.y, z - other.z};
+    }
+
+    Vec3 operator/(float s) const
+    {
+        return {x / s, y / s, z / s};
+    }
+};
+
+
+// Clamp value to [-1, 1] before acos()
+float clamp(float x)
+{
+  return constrain(x, -1.f, 1.f);
+}
+void setup()
+{
   Serial.begin(115200);
-  Serial.println("Opta starting...");
-
-  // ===== Ethernet =====
-  byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-  Ethernet.begin(mac);
-
-  delay(1000);
-  Serial.print("IP: ");
-  Serial.println(Ethernet.localIP());
-
-  server.begin();
-
-  // ===== FS =====
-  if (!LittleFS.begin()) {
-    Serial.println("LittleFS mount failed");
-  }
-
-  // ===== PWM setup (Opta-safe) =====
-  for (int i = 0; i < 4; i++) {
-    pinMode(pwmPins[i], OUTPUT);
-    analogWrite(pwmPins[i], 0);
+  Serial.println("Starting...");
+  if (!mpu.begin())
+  {
+    Serial.println("Failed to find MPU6050 chip");
   }
 }
 
-// ===== LOOP =====
-void loop() {
-  EthernetClient client = server.available();
-  if (!client) return;
+void loop()
+{
+  sensors_event_t a, ge, temp;
+  mpu.getEvent(&a, &ge, &temp);
+  /* Print out the values */
+  Serial.print("AccelX:");
+  Serial.print(a.acceleration.x);
+  Serial.print(",\t");
+  Serial.print("AccelY:");
+  Serial.print(a.acceleration.y);
+  Serial.print(",\t");
+  Serial.print("AccelZ:");
+  Serial.print(a.acceleration.z);
+  Serial.print(",\t");
 
-  String req = "";
-  bool blank = false;
+  // Calibration vectors
+  Vec3 g0 = {10, 0, -1};        // Reading at 0°
+  Vec3 g90 = {-0.3, -9.6, 0.7}; // Reading at 90°
 
-  while (client.connected()) {
-    if (client.available()) {
-      char c = client.read();
-      req += c;
+  Vec3 u = g0.normalized();
+  Vec3 v = g90.normalized();
 
-      if (c == '\n' && blank) break;
-      blank = (c == '\n');
-    }
-  }
+  // Current accelerometer reading
+  Vec3 g = {
+      a.acceleration.x,
+      a.acceleration.y,
+      a.acceleration.z};
 
-  // =========================
-  // ROUTING (manual parsing)
-  // =========================
+  Vec3 w = g.normalized();
 
-  // ===== INDEX =====
-  if (req.indexOf("GET / ") >= 0) {
-    File file = LittleFS.open("/index.html", "r");
+  float total = acos(clamp(u * v));
+  float current = acos(clamp(u * w));
 
-    client.println("HTTP/1.1 200 OK");
-    client.println("Content-Type: text/html");
-    client.println();
+  float angle = 90.0f * current / total;
 
-    while (file.available()) client.write(file.read());
-    file.close();
-  }
-
-  // ===== CHART JS =====
-  else if (req.indexOf("GET /chart.js") >= 0) {
-    File file = LittleFS.open("/chart.js", "r");
-
-    client.println("HTTP/1.1 200 OK");
-    client.println("Content-Type: application/javascript");
-    client.println();
-
-    while (file.available()) client.write(file.read());
-    file.close();
-  }
-
-  // ===== GIF =====
-  else if (req.indexOf("GET /logo.gif") >= 0) {
-    File file = LittleFS.open("/logo.gif", "r");
-
-    client.println("HTTP/1.1 200 OK");
-    client.println("Content-Type: image/gif");
-    client.println();
-
-    while (file.available()) client.write(file.read());
-    file.close();
-  }
-
-  // ===== GPIO API =====
-  else if (req.indexOf("GET /api/gpio") >= 0) {
-
-    int pinIndex = req.indexOf("pin=");
-    int stateIndex = req.indexOf("state=");
-
-    int pin = req.substring(pinIndex + 4, pinIndex + 6).toInt();
-    int state = req.substring(stateIndex + 6, stateIndex + 7).toInt();
-
-    pinMode(pin, OUTPUT);
-    digitalWrite(pin, state);
-
-    client.println("HTTP/1.1 200 OK");
-    client.println("Content-Type: application/json");
-    client.println();
-    client.println("{\"ok\":true}");
-  }
-
-  // ===== ADC API =====
-  else if (req.indexOf("GET /api/adc") >= 0) {
-
-    int adcValue = random(0, 4095);
-
-    client.println("HTTP/1.1 200 OK");
-    client.println("Content-Type: application/json");
-    client.println();
-
-    client.print("{\"value\":");
-    client.print(adcValue);
-    client.println("}");
-  }
-
-  // ===== PWM API =====
-  else if (req.indexOf("GET /api/pwm") >= 0) {
-
-    int chIndex = req.indexOf("ch=");
-    int valIndex = req.indexOf("val=");
-
-    int ch = req.substring(chIndex + 3, chIndex + 4).toInt();
-    int val = req.substring(valIndex + 4).toInt();
-
-    val = constrain(val, 0, 255);
-
-    if (ch >= 0 && ch < 4) {
-      pwmVal[ch] = val;
-      analogWrite(pwmPins[ch], val);
-    }
-
-    client.println("HTTP/1.1 200 OK");
-    client.println("Content-Type: application/json");
-    client.println();
-    client.println("{\"ok\":true}");
-  }
-
-  client.stop();
+  Serial.print("Angle: ");
+  Serial.print(angle);
+  Serial.print('\r');
+  delay(100);
 }
